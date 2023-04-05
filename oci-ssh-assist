@@ -1,0 +1,652 @@
+#!/bin/bash
+
+# Created by: Michael Purcell - michael.purcell@oracle.com
+# Purpose: Simplify SSH commands to bastions, ingress proxies, and nodes by running the command 'oci-ssh-assist'.
+
+# Not all Services are complete.
+services=(
+"Bastion"
+"Proxy"
+"OC6 Barndoor"
+"Webhook"
+"Phonebook"
+"Shepherd"
+"DOPE"
+"Artifact Push Service"
+# "Confluence"
+# "Ocean"
+# "Jira"
+# "Bitbucket"
+# "Pegasus"
+# "Service Framework"
+# "SPLAT"
+# "Touchless Bootstrap"
+# "ODO"
+# "CHEF/ICM"
+# "Build Services"
+"EXEC"
+# "Test Services"
+# "Canary Services"
+# "Kiev"
+# "Workflow Verification"
+# "Data Services IOD"
+# "DBCPS"
+"QUIT"
+)
+
+# Bastion and Proxy names whose order must line up with bastion_link and proxy_link arrays.
+bpname=(
+"r1-ad1"
+"r1-ad2"
+"us-phoenix-1-ad1-PHX"
+"us-phoenix-1-ad2-PHX"
+"us-phoenix-1-ad3-PHX"
+"us-ashburn-1-ad1-IAD"
+"us-ashburn-1-ad2-IAD"
+"us-ashburn-1-ad3-IAD"
+"eu-frankfurt-1-ad1-FRA"
+"eu-frankfurt-1-ad2-FRA"
+"eu-frankfurt-1-ad3-FRA"
+"uk-london-1-ad1-LHR"
+"uk-london-1-ad2-LHR"
+"uk-london-1-ad3-LHR"
+"ca-toronto-1-ad1-YYZ"
+"ap-tokyo-1-ad1-NRT"
+"ap-seoul-1-ad1-ICN"
+"ap-mumbai-1-ad1-BOM"
+"eu-zurich-1-ad1-ZRH"
+"sa-saopaulo-1-ad1-GRU"
+"ap-sydney-1-ad1-SYD"
+"eu-amsterdam-1-ad1-AMS"
+"me-jeddah-1-ad1-JED"
+"ap-melbourne-1-ad1-MEL"
+"ap-osaka-1-ad1-KIX"
+"ca-montreal-1-ad1-YUL"
+"ap-hyderabad-1-ad1-HYD"
+"ap-chuncheon-1-ad1-YNY"
+"me-dubai-1-ad1-DXB"
+"uk-cardiff-1-ad1-CWL"
+"us-sanjose-1-ad1-SJC"
+"sa-santiago-1-ad1-SCL"
+# OC2
+"us-langley-1-ad1-LFI --- OC2"
+"us-luke-1-ad1-LUF --- OC2"
+# OC3
+"us-gov-ashburn-1-ad1-RIC --- OC3"
+"us-gov-phoenix-1-ad1-TUS --- OC3"
+"us-gov-chicago-1-ad1-PIA --- OC3"
+# OC5
+"us-tacoma-1-ad1-TIW --- OC5"
+# OC6
+"us-gov-fortworth-1-ad1-FTW --- OC6"
+# OC8
+"ap-chiyoda-1-ad1-NJA --- OC8"
+)
+
+# Order must lin up with bpname array
+bastion_link=(
+"bastion-ad1.rb.r1.oci.oracleiaas.com"
+"bastion-ad2.rb.r1.oci.oracleiaas.com"
+"bastion-ad1.rb.us-phoenix-1.oci.oracleiaas.com"
+"bastion-ad2.rb.us-phoenix-1.oci.oracleiaas.com"
+"bastion-ad3.rb.us-phoenix-1.oci.oracleiaas.com"
+"bastion-ad1.rb.us-ashburn-1.oci.oracleiaas.com"
+"bastion-ad2.rb.us-ashburn-1.oci.oracleiaas.com"
+"bastion-ad3.rb.us-ashburn-1.oci.oracleiaas.com"
+"bastion-ad1.rb.eu-frankfurt-1.oci.oracleiaas.com"
+"bastion-ad2.rb.eu-frankfurt-1.oci.oracleiaas.com"
+"bastion-ad3.rb.eu-frankfurt-1.oci.oracleiaas.com"
+"bastion-ad1.rb.uk-london-1.oci.oracleiaas.com"
+"bastion-ad2.rb.uk-london-1.oci.oracleiaas.com"
+"bastion-ad3.rb.uk-london-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ca-toronto-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-tokyo-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-seoul-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-mumbai-1.oci.oracleiaas.com"
+"bastion-ad1.rb.eu-zurich-1.oci.oracleiaas.com"
+"bastion-ad1.rb.sa-saopaulo-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-sydney-1.oci.oracleiaas.com"
+"bastion-ad1.rb.eu-amsterdam-1.oci.oracleiaas.com"
+"bastion-ad1.rb.me-jeddah-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-melbourne-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-osaka-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ca-montreal-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-hyderabad-1.oci.oracleiaas.com"
+"bastion-ad1.rb.ap-chuncheon-1.oci.oracleiaas.com"
+"bastion-ad1.rb.me-dubai-1.oci.oracleiaas.com"
+"bastion-ad1.rb.uk-cardiff-1.oci.oracleiaas.com"
+"bastion-ad1.rb.us-sanjose-1.oci.oracleiaas.com"
+"bastion-ad1.rb.sa-santiago-1.oci.oracleiaas.com"
+# OC2
+"bastion-ad1.us-langley-1.oraclegoviaas.com"
+"bastion-ad1.us-luke-1.oraclegoviaas.com"
+# OC3
+"bastion-ad1.us-gov-ashburn-1.oraclegoviaas.com"
+"bastion-ad1.us-gov-phoenix-1.oraclegoviaas.com"
+"bastion-ad1.us-gov-chicago-1.oraclegoviaas.com"
+# OC5
+"bastion-ad1.rb.us-tacoma-1.oci.oraclerealm5.com"
+# OC6
+"bastion-ad1.rb.us-gov-fortworth-1.oci.oci.scloud"
+# OC8
+"bastion-ad1.rb.ap-chiyoda-1.oci.oraclerealm8.com"
+)
+
+# Order must line up with bpname array
+proxy_link=(
+"ssh -t -L 127.0.0.1:8081:ingress-proxy.svc.ad1.r1:8080 bastion-ad1.rb.r1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8081:ingress-proxy.svc.ad2.r1:8080 bastion-ad2.rb.r1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8082:ingress-proxy.svc.ad1.r2:8080 bastion-ad1.rb.us-phoenix-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8082:ingress-proxy.svc.ad2.r2:8080 bastion-ad2.rb.us-phoenix-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8082:ingress-proxy.svc.ad3.r2:8080 bastion-ad3.rb.us-phoenix-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8083:ingress-proxy.svc.ad1.us-ashburn-1:8080 bastion-ad1.rb.us-ashburn-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8083:ingress-proxy.svc.ad2.us-ashburn-1:8080 bastion-ad2.rb.us-ashburn-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8083:ingress-proxy.svc.ad3.us-ashburn-1:8080 bastion-ad3.rb.us-ashburn-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8084:ingress-proxy.svc.ad1.eu-frankfurt-1:8080 bastion-ad1.rb.eu-frankfurt-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8084:ingress-proxy.svc.ad2.eu-frankfurt-1:8080 bastion-ad2.rb.eu-frankfurt-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8084:ingress-proxy.svc.ad3.eu-frankfurt-1:8080 bastion-ad3.rb.eu-frankfurt-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8085:ingress-proxy.svc.ad1.uk-london-1:8080 bastion-ad1.rb.uk-london-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8085:ingress-proxy.svc.ad2.uk-london-1:8080 bastion-ad2.rb.uk-london-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8085:ingress-proxy.svc.ad3.uk-london-1:8080 bastion-ad3.rb.uk-london-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8086:ingress-proxy.svc.ad1.ca-toronto-1:8080 bastion-ad1.rb.ca-toronto-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8087:ingress-proxy.svc.ad1.ap-tokyo-1:8080 bastion-ad1.rb.ap-tokyo-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8088:ingress-proxy.svc.ad1.ap-seoul-1:8080 bastion-ad1.rb.ap-seoul-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8089:ingress-proxy.svc.ad1.ap-mumbai-1:8080 bastion-ad1.rb.ap-mumbai-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8090:ingress-proxy.svc.ad1.eu-zurich-1:8080 bastion-ad1.rb.eu-zurich-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8091:ingress-proxy.svc.ad1.sa-saopaulo-1:8080 bastion-ad1.rb.sa-saopaulo-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8092:ingress-proxy.svc.ad1.ap-sydney-1:8080 bastion-ad1.rb.ap-sydney-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8094:ingress-proxy.svc.ad1.eu-amsterdam-1:8080 bastion-ad1.rb.eu-amsterdam-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8093:ingress-proxy.svc.ad1.me-jeddah-1:8080 bastion-ad1.rb.me-jeddah-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8096:ingress-proxy.svc.ad1.ap-melbourne-1:8080 bastion-ad1.rb.ap-melbourne-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8095:ingress-proxy.svc.ad1.ap-osaka-1:8080 bastion-ad1.rb.ap-osaka-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8097:ingress-proxy.svc.ad1.ca-montreal-1:8080 bastion-ad1.rb.ca-montreal-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8098:ingress-proxy.svc.ad1.ap-hyderabad-1:8080 bastion-ad1.rb.ap-hyderabad-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8099:ingress-proxy.svc.ad1.ap-chuncheon-1:8080 bastion-ad1.rb.ap-chuncheon-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8101:ingress-proxy.svc.ad1.me-dubai-1:8080 bastion-ad1.rb.me-dubai-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8102:ingress-proxy.svc.ad1.uk-cardiff-1:8080 bastion-ad1.rb.uk-cardiff-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8100:ingress-proxy.svc.ad1.us-sanjose-1:8080 bastion-ad1.rb.us-sanjose-1.oci.oracleiaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:8103:ingress-proxy.svc.ad1.sa-santiago-1:8080 bastion-ad1.rb.sa-santiago-1.oci.oracleiaas.com watch -n 90 date"
+# OC2
+"ssh -t -L 127.0.0.1:9090:ingress-proxy.svc.ad1.us-langley-1:8080 bastion-ad1.us-langley-1.oraclegoviaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:9091:ingress-proxy.svc.ad1.us-luke-1:8080 bastion-ad1.us-luke-1.oraclegoviaas.com watch -n 90 date"
+# OC3
+"ssh -t -L 127.0.0.1:7070:ingress-proxy.svc.ad1.us-gov-ashburn-1:8080 bastion-ad1.us-gov-ashburn-1.oraclegoviaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:7072:ingress-proxy.svc.ad1.us-gov-phoenix-1:8080 bastion-ad1.us-gov-phoenix-1.oraclegoviaas.com watch -n 90 date"
+"ssh -t -L 127.0.0.1:7071:ingress-proxy.svc.ad1.us-gov-chicago-1:8080 bastion-ad1.us-gov-chicago-1.oraclegoviaas.com watch -n 90 date"
+# OC5
+"ssh -v -t -L 127.0.0.1:10201:ingress-proxy.svc.ad1.us-tacoma-1:8080 bastion-ad1.rb.us-tacoma-1.oci.oraclerealm5.com watch -n 90 date"
+# OC6
+"ssh -t -L 127.0.0.1:10301:ingress-proxy.svc.ad1.us-gov-fortworth-1:8080 bastion-ad1.rb.us-gov-fortworth-1.oci.oci.scloud watch -n 90 date"
+# OC8
+"ssh -t -L 127.0.0.1:10501:ingress-proxy.svc.ad1.ap-chiyoda-1:8080 bastion-ad1.rb.ap-chiyoda-1.oci.oraclerealm8.com watch -n 90 date"
+)
+
+webhook_node=(
+"telemetry-webhook-01001.node.ad1.r1"
+"telemetry-webhook-01002.node.ad1.r1"
+"telemetry-webhook-02002.node.ad2.r1"
+"telemetry-webhook-02001.node.ad2.r1"
+"circonus-webhook-01001.node.ad1.r2"
+"circonus-webhook-01002.node.ad1.r2"
+"circonus-webhook-02002.node.ad2.r2"
+"circonus-webhook-02005.node.ad2.r2"
+"circonus-webhook-03002.node.ad3.r2"
+"circonus-webhook-03001.node.ad3.r2"
+"telemetry-webhook-01001.node.ad1.us-ashburn-1"
+"telemetry-webhook-01002.node.ad1.us-ashburn-1"
+"telemetry-webhook-02002.node.ad2.us-ashburn-1"
+"telemetry-webhook-02003.node.ad2.us-ashburn-1"
+"telemetry-webhook-03001.node.ad3.us-ashburn-1"
+"telemetry-webhook-03002.node.ad3.us-ashburn-1"
+"telemetry-webhook-01002.node.ad1.eu-frankfurt-1"
+"telemetry-webhook-01001.node.ad1.eu-frankfurt-1"
+"telemetry-webhook-02001.node.ad2.eu-frankfurt-1"
+"telemetry-webhook-02002.node.ad2.eu-frankfurt-1"
+"telemetry-webhook-03002.node.ad3.eu-frankfurt-1"
+"telemetry-webhook-03001.node.ad3.eu-frankfurt-1"
+"telemetry-webhook-01301.node.ad1.uk-london-1"
+"telemetry-webhook-01303.node.ad1.uk-london-1"
+"telemetry-webhook-02301.node.ad2.uk-london-1"
+"telemetry-webhook-02302.node.ad2.uk-london-1"
+"telemetry-webhook-03303.node.ad3.uk-london-1"
+"telemetry-webhook-03301.node.ad3.uk-london-1"
+"telemetry-webhook-01301.node.ad1.ca-toronto-1"
+"telemetry-webhook-01302.node.ad1.ca-toronto-1"
+"telemetry-webhook-01302.node.ad1.ap-tokyo-1"
+"telemetry-webhook-01301.node.ad1.ap-tokyo-1"
+"telemetry-webhook-01302.node.ad1.ap-seoul-1"
+"telemetry-webhook-01301.node.ad1.ap-seoul-1 "
+"telemetry-webhook-01301.node.ad1.ap-mumbai-1"
+"telemetry-webhook-01302.node.ad1.ap-mumbai-1"
+"telemetry-webhook-01302.node.ad1.eu-zurich-1"
+"telemetry-webhook-01301.node.ad1.eu-zurich-1"
+"telemetry-webhook-01302.node.ad1.sa-saopaulo-1"
+"telemetry-webhook-01301.node.ad1.sa-saopaulo-1"
+"telemetry-webhook-01303.node.ad1.ap-sydney-1"
+"telemetry-webhook-01302.node.ad1.ap-sydney-1"
+"telemetry-webhook-01301.node.ad1.ap-sydney-1"
+"telemetry-webhook-01306.node.ad1.eu-amsterdam-1"
+"telemetry-webhook-01304.node.ad1.eu-amsterdam-1"
+"telemetry-webhook-01302.node.ad1.me-jeddah-1"
+"telemetry-webhook-01301.node.ad1.me-jeddah-1"
+"telemetry-webhook-01301.node.ad1.ap-osaka-1"
+"telemetry-webhook-01302.node.ad1.ap-osaka-1"
+"telemetry-webhook-01301.node.ad1.ap-melbourne-1"
+"telemetry-webhook-01302.node.ad1.ap-melbourne-1"
+"telemetry-webhook-01301.node.ad1.ca-montreal-1"
+"telemetry-webhook-01302.node.ad1.ca-montreal-1"
+"telemetry-webhook-01302.node.ad1.ap-hyderabad-1"
+"telemetry-webhook-01301.node.ad1.ap-hyderabad-1"
+"telemetry-webhook-01301.node.ad1.ap-chuncheon-1"
+"telemetry-webhook-01302.node.ad1.ap-chuncheon-1"
+"telemetry-webhook-01301.node.ad1.us-sanjose-1"
+"telemetry-webhook-01302.node.ad1.us-sanjose-1"
+"telemetry-webhook-01301.node.ad1.me-dubai-1"
+"telemetry-webhook-01302.node.ad1.me-dubai-1"
+"telemetry-webhook-01304.node.ad1.uk-cardiff-1"
+"telemetry-webhook-01303.node.ad1.uk-cardiff-1"
+"telemetry-webhook-01307.node.ad1.sa-santiago-1"
+"telemetry-webhook-01313.node.ad1.sa-santiago-1"
+# OC2
+"telemetry-webhook-01301.node.ad1.us-langley-1"
+"telemetry-webhook-01302.node.ad1.us-langley-1"
+"telemetry-webhook-01301.node.ad1.us-luke-1"
+"telemetry-webhook-01302.node.ad1.us-luke-1"
+# OC3
+"telemetry-webhook-01302.node.ad1.us-gov-ashburn-1"
+"telemetry-webhook-01301.node.ad1.us-gov-ashburn-1"
+"telemetry-webhook-01301.node.ad1.us-gov-phoenix-1"
+"telemetry-webhook-01302.node.ad1.us-gov-phoenix-1"
+"telemetry-webhook-01301.node.ad1.us-gov-chicago-1"
+"telemetry-webhook-01303.node.ad1.us-gov-chicago-1"
+# OC5
+"telemetry-webhook-01301.node.ad1.us-tacoma-1"
+"telemetry-webhook-01302.node.ad1.us-tacoma-1"
+# OC6
+"telemetry-webhook-01301.node.ad1.us-gov-fortworth-1"
+"telemetry-webhook-01302.node.ad1.us-gov-fortworth-1"
+# OC8
+"telemetry-webhook-01303.node.ad1.ap-chiyoda-1"
+"telemetry-webhook-01302.node.ad1.ap-chiyoda-1"
+)
+
+phonebook_node=(
+"phonebook-ocicorp-01001.ad1.us-ashburn-1.oraclevcn.com"
+"phonebook-ocicorp-11001.netad1.us-ashburn-1.oraclevcn.com"
+"phonebook-ocicorp-02001.ad2.us-ashburn-1.oraclevcn.com"
+"phonebook-ocicorp-12001.netad2.us-ashburn-1.oraclevcn.com"
+"phonebook-ocicorp-03001.ad3.us-ashburn-1.oraclevcn.com"
+"phonebook-ocicorp-13001.netad3.us-ashburn-1.oraclevcn.com"
+)
+
+shepherd_node=(
+"shepherd-regional-01301.node.ad1.r1"
+"shepherd-regional-02301.node.ad2.r1"
+"shepherd-regional-01301.node.ad1.r2"
+"shepherd-regional-02301.node.ad2.r2"
+"shepherd-regional-03301.node.ad3.r2"
+"shepherd-regional-01301.node.ad1.us-ashburn-1"
+"shepherd-regional-02301.node.ad2.us-ashburn-1"
+"shepherd-regional-03301.node.ad3.us-ashburn-1"
+"shepherd-regional-01301.node.ad1.eu-frankfurt-1"
+"shepherd-regional-02301.node.ad2.eu-frankfurt-1"
+"shepherd-regional-03302.node.ad3.eu-frankfurt-"
+"shepherd-regional-01301.node.ad1.uk-london-1"
+"shepherd-regional-02304.node.ad2.uk-london-1"
+"shepherd-regional-03301.node.ad3.uk-london-1"
+"shepherd-regional-01302.node.ad1.ca-toronto-"
+"shepherd-regional-01304.node.ad1.ca-toronto-1"
+"shepherd-regional-01301.node.ad1.ap-tokyo-1"
+"shepherd-regional-01303.node.ad1.ap-tokyo-1"
+"shepherd-regional-01301.node.ad1.ap-seoul-1"
+"shepherd-regional-01302.node.ad1.ap-seoul-1"
+"shepherd-regional-01301.node.ad1.ap-mumbai-1"
+"shepherd-regional-01302.node.ad1.ap-mumbai-1"
+"shepherd-regional-01301.node.ad1.eu-zurich-1"
+"shepherd-regional-01302.node.ad1.eu-zurich-1"
+"shepherd-regional-01301.node.ad1.sa-saopaulo-1"
+"shepherd-regional-01302.node.ad1.sa-saopaulo-1"
+"shepherd-regional-01301.node.ad1.ap-sydney-1"
+"shepherd-regional-01302.node.ad1.ap-sydney-1"
+"shepherd-regional-01302.node.ad1.eu-amsterdam-1"
+"shepherd-regional-01303.node.ad1.eu-amsterdam-1"
+"shepherd-regional-01301.node.ad1.me-jeddah-1"
+"shepherd-regional-01302.node.ad1.me-jeddah-1"
+"shepherd-regional-01301.node.ad1.ap-osaka-1"
+"shepherd-regional-01302.node.ad1.ap-osaka-1"
+"shepherd-regional-01301.node.ad1.ap-melbourne-1"
+"shepherd-regional-01303.node.ad1.ap-melbourne-1"
+"shepherd-regional-01301.node.ad1.ca-montreal-"
+"shepherd-regional-01302.node.ad1.ca-montreal-1"
+"shepherd-regional-01301.node.ad1.ap-hyderabad-1"
+"shepherd-regional-01302.node.ad1.ap-hyderabad-1"
+"shepherd-regional-01302.node.ad1.ap-chuncheon-1"
+"shepherd-regional-01301.node.ad1.ap-chuncheon-1"
+"shepherd-regional-01301.node.ad1.us-sanjose-1"
+"shepherd-regional-01302.node.ad1.us-sanjose-1"
+"shepherd-regional-01305.node.ad1.me-dubai-1"
+"shepherd-regional-01306.node.ad1.me-dubai-1"
+"shepherd-regional-01302.node.ad1.uk-cardiff-1"
+"shepherd-regional-01301.node.ad1.uk-cardiff-1"
+"shepherd-regional-01301.node.ad1.sa-santiago-1"
+"shepherd-regional-01305.node.ad1.sa-santiago-1"
+# OC2
+"shepherd-regional-01301.node.ad1.us-langley-1"
+"shepherd-regional-01302.node.ad1.us-langley-"
+"shepherd-regional-01302.node.ad1.us-luke-1"
+"shepherd-regional-01301.node.ad1.us-luke-1"
+# OC3
+"shepherd-regional-01301.node.ad1.us-gov-ashburn-1"
+"shepherd-regional-01302.node.ad1.us-gov-ashburn-1"
+"shepherd-regional-01301.node.ad1.us-gov-phoenix-1"
+"shepherd-regional-01302.node.ad1.us-gov-phoenix-1"
+"shepherd-regional-01305.node.ad1.us-gov-chicago-1"
+"shepherd-regional-01302.node.ad1.us-gov-chicago-1"
+# OC5
+"shepherd-regional-01302.node.ad1.us-tacoma-1"
+"shepherd-regional-01303.node.ad1.us-tacoma-1"
+# OC6
+"shepherd-regional-01301.node.ad1.us-gov-fortworth-1"
+"shepherd-regional-01302.node.ad1.us-gov-fortworth-1"
+# OC8
+"shepherd-regional-01301.node.ad1.ap-chiyoda-1"
+"shepherd-regional-01302.node.ad1.ap-chiyoda-1"
+)
+
+dope_node=(
+"dope-ui-ocicorp-01001.ad1.us-phoenix-1.oraclevcn.com"
+"dope-ui-ocicorp-03001.ad3.us-phoenix-1.oraclevcn.com"
+"dope-ui-ocicorp-02001.ad2.us-phoenix-1.oraclevcn.com"
+"dope-ui-ocicorp-01001.netad1.us-ashburn-1.oraclevcn.com"
+"dope-ui-ocicorp-02001.netad2.us-ashburn-1.oraclevcn.com"
+"dope-ui-ocicorp-03001.netad3.us-ashburn-1.oraclevcn.com"
+# OC6
+"dope-instance-ftw-1.privatesubnet.dopecorevcn.oraclevcn.com"
+"dope-instance-ftw-2.privatesubnet.dopecorevcn.oraclevcn.com"
+"dope-instance-ftw-3.privatesubnet.dopecorevcn.oraclevcn.com"
+)
+
+artifact_push_service_node=(
+"artifactpushservice-ocicorp-01001.netad1.us-ashburn-1.oraclevcn.com"
+"artifactpushservice-ocicorp-01002.netad1.us-ashburn-1.oraclevcn.com"
+"artifactpushservice-ocicorp-02001.netad2.us-ashburn-1.oraclevcn.com"
+"artifactpushservice-ocicorp-02002.netad2.us-ashburn-1.oraclevcn.com"
+"artifactpushservice-ocicorp-03002.netad3.us-ashburn-1.oraclevcn.com"
+"artifactpushservice-ocicorp-03001.netad3.us-ashburn-1.oraclevcn.com"
+)
+
+exec_node=(
+"exec-service-jump-uk-cardiff-1.jumpsubnet.jumpvcn.oraclevcn.com"
+"exec-service-kubelet-cwl-01001.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-cwl-01002.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-cwl-01003.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-cwl-01004.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-cwl-01005.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-cwl-01006.privatesubnet.execservice.oraclevcn.com"
+"exec-service-jump-sa-santiago-1.jumpsubnet.jumpvcn.oraclevcn.com"
+"exec-service-kubelet-scl-01001.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01002.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01003.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01004.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01005.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01006.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01007.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01008.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-scl-01009.privatesubnet.execservice.oraclevcn.com"
+)
+# Left off here after finishing off Cardiff-1 and SA-Santiago <- Using the builder-tools-ssh-configs/exec-ops config going in order from the top. Shifting gears to include more relevant Realms first (OC5,6)
+# OC5
+
+exec_node_OC5=(
+"exec-service-jump-us-tacoma-1.jumpsubnet.jumpvcn.oraclevcn.com"
+"exec-service-kubelet-tiw-01001.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-tiw-01002.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-tiw-01003.privatesubnet.execservice.oraclevcn.com"
+"exec-kube-cp-se-01304.node.ad1.us-tacoma-1"
+"exec-kube-cp-se-01305.node.ad1.us-tacoma-1"
+"exec-kube-cp-se-01306.node.ad1.us-tacoma-1"
+"exec-kubelet-se-01302.node.ad1.us-tacoma-1"
+"exec-kubelet-se-01304.node.ad1.us-tacoma-1"
+"exec-kubelet-se-01307.node.ad1.us-tacoma-1"
+"cicd-exec-service-orchestrator-01301.node.ad1.us-tacoma-1"
+"cicd-exec-service-orchestrator-01302.node.ad1.us-tacoma-1"
+"cicd-exec-service-orchestrator-01304.node.ad1.us-tacoma-1"
+"cicd-exec-service-frontend-01301.node.ad1.us-tacoma-1"
+"cicd-exec-service-frontend-01302.node.ad1.us-tacoma-1"
+"cicd-exec-service-frontend-01303.node.ad1.us-tacoma-1"
+)
+
+# OC6 - FTW - Gov6 - Fortworth-1
+
+exec_node_OC6_FTW=(
+"cicd-exec-service-frontend-01304.node.ad1.us-gov-fortworth-1"
+"cicd-exec-service-frontend-01305.node.ad1.us-gov-fortworth-1"
+"cicd-exec-service-frontend-01306.node.ad1.us-gov-fortworth-1"
+"cicd-exec-service-orchestrator-01304.node.ad1.us-gov-fortworth-1"
+"cicd-exec-service-orchestrator-01305.node.ad1.us-gov-fortworth-1"
+"cicd-exec-service-orchestrator-01306.node.ad1.us-gov-fortworth-1"
+"exec-kube-cp-se-01305.node.ad1.us-gov-fortworth-1"
+"exec-kube-cp-se-01306.node.ad1.us-gov-fortworth-1"
+"exec-kube-cp-se-01307.node.ad1.us-gov-fortworth-1"
+"exec-kubelet-se-01301.node.ad1.us-gov-fortworth-1"
+"exec-kubelet-se-01302.node.ad1.us-gov-fortworth-1"
+"exec-kubelet-se-01303.node.ad1.us-gov-fortworth-1"
+"exec-service-jump-us-gov-fortworth-1.jumpsubnet.jumpvcn.oraclevcn.com"
+"exec-service-kubelet-ftw-01001.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-ftw-01002.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-ftw-01003.privatesubnet.execservice.oraclevcn.com"
+)
+# OC6 - DCA - Gov9 - Sterling-2
+exec_node_OC6_DCA=(
+"cicd-exec-service-frontend-01301.node.ad1.us-gov-sterling-2"
+"cicd-exec-service-frontend-01302.node.ad1.us-gov-sterling-2"
+"cicd-exec-service-frontend-01303.node.ad1.us-gov-sterling-2"
+"cicd-exec-service-orchestrator-01301.node.ad1.us-gov-sterling-2"
+"cicd-exec-service-orchestrator-01302.node.ad1.us-gov-sterling-2"
+"cicd-exec-service-orchestrator-01303.node.ad1.us-gov-sterling-2"
+"exec-kube-cp-se-01301.node.ad1.us-gov-sterling-2"
+"exec-kube-cp-se-01302.node.ad1.us-gov-sterling-2"
+"exec-kube-cp-se-01303.node.ad1.us-gov-sterling-2"
+"exec-kubelet-se-01301.node.ad1.us-gov-sterling-2"
+"exec-kubelet-se-01302.node.ad1.us-gov-sterling-2"
+"exec-kubelet-se-01303.node.ad1.us-gov-sterling-2"
+"exec-service-jump-us-gov-sterling-2.jumpsubnet.jumpvcn.oraclevcn.com"
+"exec-service-kubelet-dca-01001.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-dca-01002.privatesubnet.execservice.oraclevcn.com"
+"exec-service-kubelet-dca-01003.privatesubnet.execservice.oraclevcn.com"
+)
+
+realm=(
+"OC1"
+"US Gov"
+"ONSR"
+"DRCC"
+)
+
+region_OC1=(
+"af-johannesburg-1"
+"ap-chuncheon-1"
+"ap-hyderabad-1"
+"ap-melbourne-1"
+"ap-mumbai-1"
+"ap-osaka-1"
+"ap-seoul-1"
+"ap-singapore-1"
+"ap-sydney-1"
+"ap-tokyo-1"
+"ca-montreal-1"
+"ca-toronto-1"
+"eu-amsterdam-1"
+"eu-frankfurt-1"
+"eu-madrid-1"
+"eu-marseille-1"
+"eu-milan-1"
+"eu-paris-1"
+"eu-stockholm-1"
+"eu-zurich-1"
+"il-jerusalem-1"
+"me-abudhabi-1"
+"me-dubai-1"
+"me-jeddah-1"
+"mx-queretaro-1"
+"sa-santiago-1"
+"sa-saopaulo-1"
+"sa-vinhedo-1"
+"uk-cardiff-1"
+"uk-london-1"
+"us-ashburn-1"
+"us-phoenix-1"
+"us-sanjose-1"
+)
+
+region_DRCC=(
+"ap-chiyoda-1"
+"ap-ibaraki-1"
+"me-dcc-muscat-1"
+"ap-dcc-canberra-1"
+)
+
+region_US_Gov=(
+"us-gov-ashburn-1"
+"us-gov-chicago-1"
+"us-gov-phoenix-1"
+"us-langley-1"
+"us-luke-1"
+)
+
+region_ONSR=(
+"us-gov-fortworth-1"
+"us-gov-sterling-2"
+"us-tacoma-1"  
+)
+
+
+
+function bastion_connect() {
+  PS3="Select a Bastion: "
+  select bastion in "${bpname[@]}"
+  do
+    echo -e "\nConnecting to $bastion. . .\n"
+    ssh "${bastion_link[$REPLY - 1]}"
+    break;
+  done
+}
+
+function proxy_connect() {
+  PS3="Select a Proxy: "
+  select proxy in "${bpname[@]}"
+  do
+    echo -e "\nConnecting to $proxy. . ."
+    ${proxy_link[$REPLY - 1]}
+    break;
+  done
+}
+
+function oc6_barndoor() {
+echo -e "\nConnecting to  OC6 Barndoor. . .\n"
+ssh -vtD 1080 barndoor6.ob.us-phoenix-1.oci.oraclecloud.com watch -n 90 date
+}
+
+function webhook_connect() {
+  PS3="Select a Webhook Node: "
+  select node in "${webhook_node[@]}"
+  do
+      echo -e "\nConnecting to $node. . .\n"
+      ssh "$node"
+      break;
+  done
+}
+
+function phonebook_connect() {
+  PS3="Select a Phonebook Node: "
+  select node in "${phonebook_node[@]}"
+  do
+      echo -e "\nConnecting to $node. . .\n"
+      ssh "$node"
+      break;
+  done
+}
+
+function shepherd_connect() {
+  PS3="Select a Shepherd Node: "
+  select node in "${shepherd_node[@]}"
+  do
+      echo -e "\nConnecting to $node. . .\n"
+      ssh "$node"
+      break;
+  done
+}
+
+function dope_connect() {
+  PS3="Select a DOPE Node: "
+  select node in "${dope_node[@]}"
+  do
+      echo -e "\nConnecting to $node. . .\n"
+      ssh "$node"
+      break;
+  done
+}
+
+function artifact_push_service_connect() {
+  PS3="Select an Artifcat Push Service Node: "
+  select node in "${artifact_push_service_node[@]}"
+  do
+      echo -e "\nConnecting to $node. . .\n"
+      ssh "$node"
+      break;
+  done
+}
+
+function exec_connect() {
+  PS3="Select a Realm: "
+  while true
+  do
+  # Parent Menu should be Realm Selection - Declared below
+  select realm in "${realm[@]}"
+  do
+    case $realm in
+      "${realm[3]}") PS3="Select a Region"
+        select region in "${region_ONSR[@]}"
+          "${region[2]}" PS3="Select an Exec Node"
+  select node in "${exec_node_OC5[@]}"
+  do
+      echo -e "\nConnecting to $node. . .\n"
+      ssh "$node"
+      break;
+  done
+}
+
+# Aligns with services array.  As new services are added the order/array #'s will need to be adjusted.
+PS3="Select a Connection: "
+select i in "${services[@]}"
+do
+  case "$i" in
+    "${services[0]}") bastion_connect; break;;
+    "${services[1]}") proxy_connect; break;;
+    "${services[2]}") oc6_barndoor; break;;
+    "${services[3]}") webhook_connect; break;;
+    "${services[4]}") phonebook_connect; break;;
+    "${services[5]}") shepherd_connect; break;;
+    "${services[6]}") dope_connect; break;;
+    "${services[7]}") artifact_push_service_connect; break;;
+    "${services[8]}") exec_connect; break;;
+    # "${services[3]}") confluence_connect; break;;
+    # "${services[4]}") ocean_connect; break;;
+    # "${services[7]}") jira_connect; break;;
+    # "${services[8]}") bitbucket_connect; break;;
+    # "${services[9]}")  pegasus_connect; break;;
+    # "${services[10]}") serviceframework_connect; break;;
+    # "${services[12]}") splat_connect; break;;
+    # "${services[15]}") touchlessbootstrap_connect; break;;
+    # "${services[16]}") odo_connect; break;;
+    # "${services[17]}") cheficm_connect; break;;
+    # "${services[18]}") buildservices_connect; break;;
+    # "${services[20]}") testservices_connect; break;;
+    # "${services[21]}") canaryservices_connect; break;;
+    # "${services[22]}") kiev_connect; break;;
+    # "${services[23]}") workflowverification_connect; break;;
+    # "${services[24]}") dataservicesiod_connect; break;;
+    # "${services[25]}") dbcps_connect; break;;
+    "${services[9]}") exit 0;;
+  esac
+done

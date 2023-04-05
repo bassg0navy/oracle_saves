@@ -1,0 +1,16 @@
+#!/bin/zsh
+export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True
+privateKey="/home/kabass/.ssh/id_rsa"
+localPort=6443
+sessionIP="10.0.0.14"
+sessionPort=6443
+sessionOCID=$(jq '.data.id' /tmp/bastion-session-port-forwarding-output | sed 's/.//;s/.$//')
+oci --profile LiVE bastion session create-port-forwarding \
+--bastion-id ocid1.bastion.oc1.iad.amaaaaaaclpbrqaa7hzxs2vtoc3gh6ulqovijh6ikj5c4fnbjw4dfcxo3jeq \
+--ssh-public-key-file /home/kabass/.ssh/id_rsa.pub \
+--target-private-ip 10.0.0.14 \
+--session-ttl 10800 \
+--target-port 6443 > /tmp/bastion-session-port-forwarding-output 
+# <some logic to get session id for bastion session started in previous command>
+# oci --profile LiVE bastion session get --session-id $sessionOCID | jq '.data."ssh-metadata".command'
+ssh -v -i "/home/kabass/.ssh/id_rsa" -N -L 6443:10.0.0.14:6443 -p 22 "$sessionOCID@host.bastion.us-ashburn-1.oci.oraclecloud.com"

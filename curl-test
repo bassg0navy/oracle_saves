@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Create history log
+history_log="/home/kabass/operations_work/loadbalancer/history.log"
+touch $history_log
+
+if [ -f lb-stats.log ];
+then
+	truncate -s 0 lb-stats.log
+fi
+
+i="0"
+while [ $i -lt 1000 ]
+do
+echo "==$i==" && curl http://150.136.135.54/home/ &>> lb-stats.log
+i=$[$i+1]
+done
+
+awk -f awk-hello <lb-stats.log

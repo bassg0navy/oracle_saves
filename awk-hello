@@ -1,0 +1,8 @@
+#!/bin/bash
+#history_log="/home/kabass/operations_work/loadbalancer/history.log"
+{for (i=1;i<NR;i++)
+	words[$i]++; percentage=(words["Hello"]/1000)*100;}
+#BEGIN{Hello=$(system("grep -i Hello lb-stats.log | wc -l"))}
+#END{printf words["Hello"]}
+END{ printf("\n\nSuccess rate is %.2f%%\n\n", percentage) ; if (percentage < 80) system("sh /home/kabass/operations_work/poop-art") ; else system("sh /home/kabass/operations_work/thumbs-up") }
+

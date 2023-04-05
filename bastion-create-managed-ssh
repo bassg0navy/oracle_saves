@@ -1,0 +1,22 @@
+#!/bin/zsh
+export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True
+#if [[ "$1" == "Agatha2" ]]
+#then
+privateNodeIP="10.0.10.231"
+targetResourceID="ocid1.instance.oc1.iad.anuwcljtclpbrqac5cmfkbrapyye26bypsrjdsuqlkhrs54wegjfvyqjn7qa"
+targetOSUsername="opc"
+sessionOCID=$(jq '.data.id' /tmp/bastion-session-managed-ssh-output | sed 's/.//;s/.$//')
+privateKey="/home/kabass/.ssh/id_rsa"
+#else echo 'hostname unknown'
+#fi
+# Variables
+oci --profile LiVE bastion session create-managed-ssh \
+--bastion-id ocid1.bastion.oc1.iad.amaaaaaaclpbrqaa7hzxs2vtoc3gh6ulqovijh6ikj5c4fnbjw4dfcxo3jeq \
+--ssh-public-key-file /home/kabass/.ssh/id_rsa.pub \
+--target-os-username $targetOSUsername \
+--target-resource-id $targetResourceID \
+--target-port 22 \
+> /tmp/bastion-session-managed-ssh-output
+#oci --profile LiVE bastion session get --session-id "$sessionOCID" | jq '.data."ssh-metadata"
+#adata".command'
+ssh -i "$privateKey" -o ProxyCommand="ssh -i "$privateKey" -W %h:%p -p 22 "$sessionOCID"@host.bastion.us-ashburn-1.oci.oraclecloud.com" -p 22 opc@"$privateNodeIP"
